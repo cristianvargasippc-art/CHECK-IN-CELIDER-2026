@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CHECK-IN · CELIDER 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0B1F3A;
+    --blue: #2563EB;
+    --accent: #60A5FA;
+    --gold: #F59E0B;
+    --cream: #FAFAF7;
+    --green: #10B981;
+    --red: #EF4444;
+    --text: #1E293B;
+    --muted: #64748B;
+    --border: rgba(11,31,58,.12);
+    --card: #FFFFFF;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0 0 3rem;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Background decorative */
+  body::before {
+    content: '';
+    position: fixed; top: 0; left: 0; right: 0; height: 320px;
+    background: linear-gradient(135deg, var(--navy) 0%, #1a3a6b 60%, #0f2d5e 100%);
+    clip-path: ellipse(100% 72% at 50% 0%);
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      radial-gradient(circle at 20% 15%, rgba(96,165,250,.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 20%, rgba(245,158,11,.06) 0%, transparent 35%);
+    z-index: 0; pointer-events: none;
+  }
+
+  /* Header strip */
+  .hdr {
+    width: 100%; position: relative; z-index: 10;
+    padding: 1.8rem 2rem 0;
+    text-align: center;
+    max-width: 480px; margin: 0 auto;
+  }
+
+  .hdr-eyebrow {
+    font-size: .55rem; font-weight: 700; letter-spacing: .35em;
+    text-transform: uppercase; color: var(--accent); opacity: .85;
+    margin-bottom: .5rem;
+  }
+
+  .hdr-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem; font-weight: 700; color: #fff;
+    letter-spacing: .04em; line-height: 1.1;
+    margin-bottom: .3rem;
+  }
+
+  .hdr-title em { color: var(--gold); font-style: normal; }
+
+  .hdr-sub {
+    font-size: .68rem; color: rgba(255,255,255,.55);
+    font-weight: 400; letter-spacing: .05em;
+  }
+
+  /* Card */
+  .card {
+    position: relative; z-index: 10;
+    background: var(--card);
+    width: calc(100% - 2rem); max-width: 440px;
+    margin: 2rem auto 0;
+    border-radius: 2px;
+    box-shadow: 0 20px 60px rgba(11,31,58,.18), 0 4px 16px rgba(11,31,58,.1);
+    overflow: hidden;
+  }
+
+  .card-top {
+    height: 4px;
+    background: linear-gradient(90deg, var(--blue), var(--accent), var(--gold));
+  }
+
+  .card-inner { padding: 1.8rem 1.8rem 2rem; }
+
+  /* Delegate info box */
+  .delegate-box {
+    background: linear-gradient(135deg, var(--navy) 0%, #1a3a6b 100%);
+    border-radius: 2px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.6rem;
+    position: relative; overflow: hidden;
+  }
+
+  .delegate-box::before {
+    content: ''; position: absolute; right: -20px; top: -20px;
+    width: 100px; height: 100px; border-radius: 50%;
+    background: rgba(96,165,250,.08);
+  }
+
+  .db-label {
+    font-size: .52rem; font-weight: 700; letter-spacing: .25em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: .5rem;
+  }
+
+  .db-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.35rem; font-weight: 700; color: #fff;
+    line-height: 1.2; margin-bottom: .7rem;
+  }
+
+  .db-tags { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+  .db-tag {
+    font-size: .54rem; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; padding: .22rem .6rem;
+    border-radius: 2px;
+  }
+  .db-tag.blue { background: rgba(96,165,250,.15); color: var(--accent); border: 1px solid rgba(96,165,250,.25); }
+  .db-tag.gold { background: rgba(245,158,11,.15); color: var(--gold); border: 1px solid rgba(245,158,11,.25); }
+
+  /* Section label */
+  .sec-label {
+    font-size: .58rem; font-weight: 700; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 1rem; display: flex; align-items: center; gap: .6rem;
+  }
+  .sec-label::after { content:''; flex:1; height:1px; background: var(--border); }
+
+  /* Gender selector */
+  .gender-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: 1.4rem; }
+
+  .gender-btn {
+    position: relative; cursor: pointer;
+    border: 2px solid var(--border);
+    background: #fff; border-radius: 2px;
+    padding: 1rem .8rem;
+    text-align: center; transition: all .2s;
+    user-select: none;
+  }
+
+  .gender-btn input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+  .gender-btn .gi { font-size: 1.6rem; display: block; margin-bottom: .35rem; }
+  .gender-btn .gl {
+    font-size: .62rem; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); transition: color .2s;
+  }
+
+  .gender-btn:has(input:checked) {
+    border-color: var(--blue);
+    background: rgba(37,99,235,.04);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+  }
+  .gender-btn:has(input:checked) .gl { color: var(--blue); }
+
+  /* Text inputs */
+  .field { margin-bottom: 1.1rem; }
+
+  .field label {
+    display: block; font-size: .58rem; font-weight: 700;
+    letter-spacing: .15em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: .45rem;
+  }
+
+  .field input, .field select {
+    width: 100%; padding: .7rem .9rem;
+    border: 1.5px solid var(--border);
+    background: #fff; border-radius: 2px;
+    font-family: 'DM Sans', sans-serif; font-size: .82rem; font-weight: 500;
+    color: var(--text); outline: none;
+    transition: border-color .18s, box-shadow .18s;
+    -webkit-appearance: none;
+  }
+
+  .field input:focus, .field select:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+  }
+
+  .field input::placeholder { color: #CBD5E1; }
+
+  /* Submit button */
+  .btn-submit {
+    width: 100%; padding: 1rem;
+    background: var(--navy); color: #fff;
+    border: none; border-radius: 2px;
+    font-family: 'DM Sans', sans-serif; font-size: .75rem;
+    font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+    cursor: pointer; transition: all .2s; margin-top: .4rem;
+    position: relative; overflow: hidden;
+  }
+
+  .btn-submit:hover:not(:disabled) { background: #1a3a6b; }
+  .btn-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+  .btn-submit::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+    transform: translateX(-100%); transition: transform .5s;
+  }
+  .btn-submit:hover::after { transform: translateX(100%); }
+
+  /* States */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* Success screen */
+  .success-wrap {
+    text-align: center; padding: 1.5rem 1rem 1rem;
+  }
+
+  .success-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--green), #059669);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; margin: 0 auto 1.2rem;
+    box-shadow: 0 8px 24px rgba(16,185,129,.25);
+    animation: popIn .4s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  .success-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem; font-weight: 700; color: var(--navy);
+    margin-bottom: .4rem;
+  }
+
+  .success-msg { font-size: .78rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.2rem; }
+
+  .success-detail {
+    background: #F0FDF4; border: 1px solid rgba(16,185,129,.2);
+    border-radius: 2px; padding: 1rem 1.2rem; text-align: left;
+  }
+
+  .sd-row { display: flex; justify-content: space-between; align-items: center; padding: .3rem 0; border-bottom: 1px solid rgba(16,185,129,.1); }
+  .sd-row:last-child { border-bottom: none; }
+  .sd-key { font-size: .6rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--green); }
+  .sd-val { font-size: .75rem; font-weight: 600; color: var(--navy); max-width: 60%; text-align: right; }
+
+  /* Error */
+  .err-box {
+    background: #FEF2F2; border: 1px solid rgba(239,68,68,.2);
+    border-radius: 2px; padding: .8rem 1rem; margin-top: .8rem;
+    font-size: .73rem; color: var(--red); font-weight: 600;
+    display: none;
+  }
+
+  /* No QR state */
+  .noqr {
+    text-align: center; padding: 2.5rem 1.5rem;
+    color: var(--muted); font-size: .78rem; line-height: 1.7;
+  }
+
+  .noqr .ni { font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: .4; }
+
+  /* Loader */
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin .6s linear infinite;
+    vertical-align: middle; margin-right: .4rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .footer-note {
+    position: relative; z-index: 10;
+    font-size: .58rem; color: var(--muted); text-align: center;
+    margin-top: 1.5rem; letter-spacing: .08em;
+    opacity: .5;
+  }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-eyebrow">Sistema de Registro</div>
+  <div class="hdr-title">CHECK-IN <em>CELIDER</em> 2026</div>
+  <div class="hdr-sub">Congreso de Líderes Estudiantiles</div>
+</header>
+
+<div class="card">
+  <div class="card-top"></div>
+  <div class="card-inner">
+
+    <!-- No QR state -->
+    <div class="screen active" id="screen-noqr">
+      <div class="noqr">
+        <span class="ni">🔲</span>
+        <strong style="display:block;font-size:.9rem;color:var(--navy);margin-bottom:.4rem;">Acceso por QR</strong>
+        Esta página debe abrirse escaneando el código QR personal de cada delegado.
+      </div>
+    </div>
+
+    <!-- Form -->
+    <div class="screen" id="screen-form">
+      <div class="delegate-box">
+        <div class="db-label">Delegado registrado</div>
+        <div class="db-name" id="f-nombre">—</div>
+        <div class="db-tags">
+          <span class="db-tag blue" id="f-delegacion">—</span>
+          <span class="db-tag gold" id="f-comision">—</span>
+        </div>
+      </div>
+
+      <div class="sec-label">Completa tu información</div>
+
+      <!-- Sexo -->
+      <div class="gender-grid" style="margin-bottom:1.4rem;">
+        <label class="gender-btn">
+          <input type="radio" name="sexo" value="Masculino">
+          <span class="gi">👦</span>
+          <span class="gl">Masculino</span>
+        </label>
+        <label class="gender-btn">
+          <input type="radio" name="sexo" value="Femenino">
+          <span class="gi">👧</span>
+          <span class="gl">Femenino</span>
+        </label>
+      </div>
+
+      <!-- Centro Educativo -->
+      <div class="field">
+        <label>Centro Educativo</label>
+        <input type="text" id="centro" placeholder="Ej: Colegio San José" autocomplete="off">
+      </div>
+
+      <!-- Distrito -->
+      <div class="field">
+        <label>Distrito</label>
+        <input type="text" id="distrito" placeholder="Ej: Distrito 10-04" autocomplete="off">
+      </div>
+
+      <div class="err-box" id="err-box"></div>
+
+      <button class="btn-submit" id="btn-submit" onclick="submitCheckin()">
+        Registrar Check-In
+      </button>
+    </div>
+
+    <!-- Already checked in -->
+    <div class="screen" id="screen-already">
+      <div class="success-wrap">
+        <div class="success-icon" style="background:linear-gradient(135deg,var(--blue),var(--accent))">ℹ️</div>
+        <div class="success-title">Ya registrado</div>
+        <div class="success-msg">Este delegado ya completó su check-in anteriormente.</div>
+      </div>
+    </div>
+
+    <!-- Success -->
+    <div class="screen" id="screen-success">
+      <div class="success-wrap">
+        <div class="success-icon">✓</div>
+        <div class="success-title">¡Check-In exitoso!</div>
+        <div class="success-msg">Tu asistencia ha sido registrada en el sistema. Bienvenido a CELIDER 2026.</div>
+        <div class="success-detail" id="success-detail"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="footer-note">CELIDER 2026 · Sistema de Registro Digital</p>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIGURACIÓN SUPABASE
+// ═══════════════════════════════════════════════
+var SUPABASE_URL      = 'https://uegedofaqoycieezcjwz.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_je8OETF_koSBTEHNKTaW9A_ocpos5Hu';
+// ═══════════════════════════════════════════════
+
+var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function show(id) {
+  ['screen-noqr','screen-form','screen-already','screen-success'].forEach(function(s){
+    document.getElementById(s).classList.toggle('active', s === id);
+  });
+}
+
+function getParam(name) {
+  var url = new URL(window.location.href);
+  return url.searchParams.get(name) || '';
+}
+
+var pNombre     = decodeURIComponent(getParam('n'));
+var pDelegacion = decodeURIComponent(getParam('d'));
+var pComision   = decodeURIComponent(getParam('c'));
+
+if (!pNombre) {
+  show('screen-noqr');
+} else {
+  document.getElementById('f-nombre').textContent     = pNombre;
+  document.getElementById('f-delegacion').textContent = pDelegacion;
+  document.getElementById('f-comision').textContent   = pComision;
+
+  // Check if already checked in
+  db.from('checkins')
+    .select('id')
+    .ilike('nombre', pNombre.trim())
+    .ilike('delegacion', pDelegacion.trim())
+    .limit(1)
+    .then(function(res) {
+      if (res.data && res.data.length > 0) {
+        show('screen-already');
+      } else {
+        show('screen-form');
+      }
+    });
+}
+
+function submitCheckin() {
+  var sexoEl = document.querySelector('input[name="sexo"]:checked');
+  var centro = document.getElementById('centro').value.trim();
+  var dist   = document.getElementById('distrito').value.trim();
+  var errBox = document.getElementById('err-box');
+  errBox.style.display = 'none';
+
+  if (!sexoEl)  { showErr('Por favor selecciona tu sexo.'); return; }
+  if (!centro)  { showErr('Por favor ingresa tu centro educativo.'); return; }
+  if (!dist)    { showErr('Por favor ingresa tu distrito.'); return; }
+
+  var btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Registrando...';
+
+  db.from('checkins').insert({
+    nombre:           pNombre,
+    delegacion:       pDelegacion,
+    comision:         pComision,
+    sexo:             sexoEl.value,
+    centro_educativo: centro,
+    distrito:         dist
+  }).then(function(res) {
+    if (res.error) {
+      btn.disabled = false;
+      btn.innerHTML = 'Registrar Check-In';
+      showErr('Error al guardar: ' + res.error.message);
+      return;
+    }
+
+    // Show success
+    document.getElementById('success-detail').innerHTML =
+      row('Nombre', pNombre) +
+      row('Delegación', pDelegacion) +
+      row('Comisión', pComision) +
+      row('Sexo', sexoEl.value) +
+      row('Centro', centro) +
+      row('Distrito', dist);
+    show('screen-success');
+  });
+}
+
+function row(k, v) {
+  return '<div class="sd-row"><span class="sd-key">'+k+'</span><span class="sd-val">'+v+'</span></div>';
+}
+
+function showErr(msg) {
+  var e = document.getElementById('err-box');
+  e.textContent = msg; e.style.display = 'block';
+}
+</script>
+</body>
+</html>
